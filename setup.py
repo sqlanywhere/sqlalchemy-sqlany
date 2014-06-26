@@ -13,8 +13,8 @@ setup(
     , keywords='SAP Sybase SQLAnywhere SQLAlchemy'
     , author='Graeme Perrow'
     , author_email='graeme.perrow@sap.com'
-    , install_requires=['sqlanydb >= 1.0.4']
-    , packages = find_packages()
+    , install_requires=['sqlanydb >= 1.0.6']
+    , packages = ['sqlalchemy_sqlany','test']
     , url='https://github.com/sqlanywhere/sqlalchemy-sqlany'
     , tests_require=['nose >= 0.11']
     , test_suite='nose.collector'
@@ -36,6 +36,8 @@ setup(
         'Programming Language :: Python :: 2.5',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
         'Topic :: Database',
         'Topic :: Software Development :: Libraries :: Python Modules'
         ]

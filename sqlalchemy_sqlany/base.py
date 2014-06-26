@@ -1,4 +1,4 @@
-# Copyright 2013 SAP AG or an SAP affiliate company.
+# Copyright 2014 SAP AG or an SAP affiliate company.
 # 
 
 import operator
@@ -394,7 +394,8 @@ class SQLAnyDialect(default.DefaultDialect):
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='uid', password='pwd',
                                           database='dbn' )
-        if 'host' in opts.keys() and 'port' in opts.keys():
+        keys = list(opts.keys())
+        if 'host' in keys and 'port' in keys:
             opts['host'] += ':%s' % opts['port']
             del opts['port']
         #
@@ -442,9 +443,9 @@ class SQLAnyDialect(default.DefaultDialect):
         """)
 
         # Py2K
-        if isinstance(schema, unicode):
+        if isinstance(schema, str):
             schema = schema.encode("ascii")
-        if isinstance(table_name, unicode):
+        if isinstance(table_name, str):
             table_name = table_name.encode("ascii")
         # end Py2K
         result = connection.execute(TABLEID_SQL,
@@ -636,6 +637,7 @@ class SQLAnyDialect(default.DefaultDialect):
              FROM sys.sysidxcol ic
              join sys.systabcol tc on (ic.table_id=tc.table_id and ic.column_id=tc.column_id)
              WHERE ic.index_id = :index_id and ic.table_id = :table_id
+             ORDER BY ic.sequence ASC
             """)
             idx_cols = connection.execute(INDEXCOL_SQL, index_id=r["index_id"],
                                           table_id=table_id)
@@ -677,6 +679,38 @@ class SQLAnyDialect(default.DefaultDialect):
                 "name": pks["name"]}
 
     @reflection.cache
+    def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+        # Same as get_indexes except only for "unique"=2
+        table_id = self.get_table_id(connection, table_name, schema,
+                                     info_cache=kw.get("info_cache"))
+
+        # unique=2 -> unique constraint
+        INDEX_SQL = text("""
+          SELECT i.index_id as index_id, i.index_name AS name
+          FROM sys.sysidx i join sys.systab t on i.table_id=t.table_id
+          WHERE t.table_id = :table_id and i.index_category = 3 and i."unique"=2
+        """)
+
+        results = connection.execute(INDEX_SQL, table_id=table_id)
+        indexes = []
+        for r in results:
+            INDEXCOL_SQL = text("""
+             select tc.column_name as col
+             FROM sys.sysidxcol ic
+             join sys.systabcol tc on (ic.table_id=tc.table_id and ic.column_id=tc.column_id)
+             WHERE ic.index_id = :index_id and ic.table_id = :table_id
+             ORDER BY ic.sequence ASC
+            """)
+            idx_cols = connection.execute(INDEXCOL_SQL, index_id=r["index_id"],
+                                          table_id=table_id)
+            column_names = [ic["col"] for ic in idx_cols]
+            index_info = {"name": r["name"],
+                          "column_names": column_names}
+            indexes.append(index_info)
+
+        return indexes       
+
+    @reflection.cache
     def get_schema_names(self, connection, **kw):
 
         SCHEMA_SQL = text("SELECT u.name AS name FROM dbo.sysusers u")
@@ -697,7 +731,7 @@ class SQLAnyDialect(default.DefaultDialect):
         """)
 
         # Py2K
-        if isinstance(schema, unicode):
+        if isinstance(schema, str):
             schema = schema.encode("ascii")
         # end Py2K
         tables = connection.execute(TABLE_SQL, schema_name=schema)
@@ -718,7 +752,7 @@ class SQLAnyDialect(default.DefaultDialect):
         """)
 
         # Py2K
-        if isinstance(view_name, unicode):
+        if isinstance(view_name, str):
             view_name = view_name.encode("ascii")
         # end Py2K
         view = connection.execute(VIEW_DEF_SQL, view_name=view_name)
@@ -738,7 +772,7 @@ class SQLAnyDialect(default.DefaultDialect):
         """)
 
         # Py2K
-        if isinstance(schema, unicode):
+        if isinstance(schema, str):
             schema = schema.encode("ascii")
         # end Py2K
         views = connection.execute(VIEW_SQL, schema_name=schema)
