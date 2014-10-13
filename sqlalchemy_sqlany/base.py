@@ -665,7 +665,8 @@ class SQLAnyDialect(default.DefaultDialect):
         results = connection.execute(PK_SQL, table_id=table_id)
         pks = results.fetchone()
         results.close()
-
+        if not pks:
+            return {'constrained_columns':[],'name':''}
         PKCOL_SQL = text("""
              select tc.column_name as col
              FROM sys.sysidxcol ic
