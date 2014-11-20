@@ -15,7 +15,7 @@ from sqlalchemy.types import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
                             TEXT, DATE, DATETIME, FLOAT, NUMERIC,\
                             BIGINT, INT, INTEGER, SMALLINT, BINARY,\
                             VARBINARY, DECIMAL, TIMESTAMP, Unicode,\
-                            UnicodeText, REAL
+                            UnicodeText, REAL, LargeBinary
 
 RESERVED_WORDS = set([
     "add", "all", "alter", "and",
@@ -204,6 +204,7 @@ ischema_names = {
     'varbinary': VARBINARY,
     'image': IMAGE,
     'bit': BIT,
+    "long binary": LargeBinary,
 
 # not in documentation for ASE 15.7
     'long varchar': TEXT,  # TODO
