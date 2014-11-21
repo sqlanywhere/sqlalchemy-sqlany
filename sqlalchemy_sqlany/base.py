@@ -3,6 +3,10 @@
 
 import operator
 import re
+import decimal
+import itertools
+
+import sqlanydb
 
 from sqlalchemy.sql import compiler, expression, text, bindparam
 from sqlalchemy.engine import default, base, reflection, url
@@ -230,6 +234,20 @@ ischema_names = {
 }
 
 
+# converter function, only argument is the value returned
+# from the database that we want to convert
+_decimal_converter = lambda decAsString: decimal.Decimal(decAsString)
+   
+
+# list of types to have converted, and the callable that sqlanydb calls when
+# it needs to convert said type
+_converter_list = [(sqlanydb.DT_DECIMAL, _decimal_converter)]
+
+
+# register any converters we have with sqlanydb
+list(itertools.starmap(lambda x, y: sqlanydb.register_converter(x, y), _converter_list))
+
+
 class SQLAnyInspector(reflection.Inspector):
 
     def __init__(self, conn):
@@ -398,14 +416,20 @@ class SQLAnyDialect(default.DefaultDialect):
     postfetch_lastrowid = True
     supports_multivalues_insert = True
 
+    # if not present, then sqlalchemy expects a float when dealing with 'Numeric' decimal types
+    # but by default sqlanydb returns them as strings, which freaks sqlalchemy out
+    # so we return them as Decimal objects, by use of a converter function and 
+    # `sqlanydb.register_converter()`
+    supports_native_decimal = True 
+
+
+
     @classmethod
     def dbapi(self):
-        import sqlanydb
         return sqlanydb
 
     @property
     def driver(self):
-        import sqlanydb
         return sqlanydb
 
     def create_connect_args(self, url):
