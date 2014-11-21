@@ -76,6 +76,22 @@ RESERVED_WORDS = set([
     "within", "work", "writetext", "xml"
     ])
 
+class SQLAnyNoPrimaryKeyError(Exception):
+    ''' exception that is raised when trying to load the primary keys for a 
+    table that does not have any columns marked as being a primary key. 
+    As noted in this documentation: 
+    http://docs.sqlalchemy.org/en/latest/faq.html#how-do-i-map-a-table-that-has-no-primary-key
+    if a table has fully duplicate rows, and has no primary key, it cannot be mapped.
+    Since we can't tell if a table has rows that are 'supposed' to act like a primary key,
+    we just throw an exception and hopes the user adds primary keys to the table instead.
+    '''
+
+    def __init__(self, tableName):
+
+        super(Exception, self).__init__(self)
+
+        self.tableName = tableName
+
 
 class _SQLAnyUnitypeMixin(object):
     """these types appear to return a buffer object."""
@@ -666,6 +682,11 @@ class SQLAnyDialect(default.DefaultDialect):
         results = connection.execute(PK_SQL, table_id=table_id)
         pks = results.fetchone()
         results.close()
+
+        if not pks:
+            # if we don't have any primary keys, then we will get a 
+            # "TypeError: 'NoneType' object is not subscriptable" below.
+            raise SQLAnyNoPrimaryKeyError(table_name)
 
         PKCOL_SQL = text("""
              select tc.column_name as col

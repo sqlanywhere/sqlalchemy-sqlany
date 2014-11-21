@@ -13,7 +13,7 @@ from .base import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
                  BIGINT, INT, INTEGER, SMALLINT, BINARY,\
                  VARBINARY, UNITEXT, UNICHAR, UNIVARCHAR,\
                  IMAGE, BIT, MONEY, SMALLMONEY, TINYINT,\
-                 dialect
+                 dialect, SQLAnyNoPrimaryKeyError
 
 
 __all__ = (
@@ -22,5 +22,5 @@ __all__ = (
     'BIGINT', 'INT', 'INTEGER', 'SMALLINT', 'BINARY',
     'VARBINARY', 'UNITEXT', 'UNICHAR', 'UNIVARCHAR',
     'IMAGE', 'BIT', 'MONEY', 'SMALLMONEY', 'TINYINT',
-    'dialect'
+    'dialect', "SQLAnyNoPrimaryKeyError"
 )
