@@ -90,12 +90,11 @@ class SQLAnyNoPrimaryKeyError(Exception):
     we just throw an exception and hopes the user adds primary keys to the table instead.
     '''
 
-    def __init__(self, tableName):
+    def __init__(self, message, table_name):
 
-        super(Exception, self).__init__(self)
+        super(SQLAnyNoPrimaryKeyError, self).__init__(message)
 
-        self.tableName = tableName
-
+        self.table_name = table_name
 
 class _SQLAnyUnitypeMixin(object):
     """these types appear to return a buffer object."""
@@ -710,7 +709,9 @@ class SQLAnyDialect(default.DefaultDialect):
         if not pks:
             # if we don't have any primary keys, then we will get a 
             # "TypeError: 'NoneType' object is not subscriptable" below.
-            raise SQLAnyNoPrimaryKeyError(table_name)
+            raise SQLAnyNoPrimaryKeyError(
+                "The table %s has no primary key and therefore can't be mapped using SQLAlchemy!" % table_name,
+                table_name)
 
         PKCOL_SQL = text("""
              select tc.column_name as col
