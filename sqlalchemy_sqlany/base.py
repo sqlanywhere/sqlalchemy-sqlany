@@ -235,8 +235,7 @@ ischema_names = {
 
 # converter function, only argument is the value returned
 # from the database that we want to convert
-_decimal_converter = lambda decAsString: decimal.Decimal(decAsString)
-   
+_decimal_converter = lambda decAsString: decimal.Decimal(decAsString) if decAsString is not None else None   
 
 # list of types to have converted, and the callable that sqlanydb calls when
 # it needs to convert said type
