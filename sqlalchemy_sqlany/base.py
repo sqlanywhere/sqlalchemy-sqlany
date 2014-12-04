@@ -431,6 +431,10 @@ class SQLAnyDialect(default.DefaultDialect):
         return sqlanydb
 
     def create_connect_args(self, url):
+
+        # get extra options
+        dialect_opts = dict(url.query)
+
         opts = url.translate_connect_args(username='uid', password='pwd',
                                           database='dbn' )
         keys = list(opts.keys())
@@ -438,6 +442,7 @@ class SQLAnyDialect(default.DefaultDialect):
             opts['host'] += ':%s' % opts['port']
             del opts['port']
         #
+        opts.update(dialect_opts)
         return ([], opts)
     #
 
