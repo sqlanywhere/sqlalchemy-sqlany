@@ -2,7 +2,7 @@
 .. Copyright (c) 2013 SAP AG or an SAP affiliate company. All rights reserved.
 .. ***************************************************************************
 
-sqlalchemy-sqlany
+sqlalchemy-sqlany          
 =================
 This project provides a SQLAlchemy dialect for communicating with a SQL Anywhere
 database server. It is built upon the Python SQL Anywhere Database Interface.
