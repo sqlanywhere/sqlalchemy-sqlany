@@ -13,7 +13,7 @@ The following software is required to use the SQL Anywhere dialect for SQLAlchem
 
 * SQL Anywhere 11.0.1 or higher
 * Python 2.4, 2.5, 2.6, 2.7, or 3.4
-* The Python SQL Anywhere Database Interface version 1.0.5 or later
+* The Python SQL Anywhere Database Interface version 1.0.6 or later
 * SQLAlchemy version 0.8.0 or higher
 
 Installing the required software
