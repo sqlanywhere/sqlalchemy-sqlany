@@ -3,6 +3,10 @@
 
 import operator
 import re
+import decimal
+import itertools
+
+import sqlanydb
 
 from sqlalchemy.sql import compiler, expression, text, bindparam
 from sqlalchemy.engine import default, base, reflection, url
@@ -15,7 +19,7 @@ from sqlalchemy.types import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
                             TEXT, DATE, DATETIME, FLOAT, NUMERIC,\
                             BIGINT, INT, INTEGER, SMALLINT, BINARY,\
                             VARBINARY, DECIMAL, TIMESTAMP, Unicode,\
-                            UnicodeText, REAL
+                            UnicodeText, REAL, LargeBinary
 
 RESERVED_WORDS = set([
     "add", "all", "alter", "and",
@@ -76,6 +80,21 @@ RESERVED_WORDS = set([
     "within", "work", "writetext", "xml"
     ])
 
+class SQLAnyNoPrimaryKeyError(Exception):
+    ''' exception that is raised when trying to load the primary keys for a 
+    table that does not have any columns marked as being a primary key. 
+    As noted in this documentation: 
+    http://docs.sqlalchemy.org/en/latest/faq.html#how-do-i-map-a-table-that-has-no-primary-key
+    if a table has fully duplicate rows, and has no primary key, it cannot be mapped.
+    Since we can't tell if a table has rows that are 'supposed' to act like a primary key,
+    we just throw an exception and hopes the user adds primary keys to the table instead.
+    '''
+
+    def __init__(self, message, table_name):
+
+        super(SQLAnyNoPrimaryKeyError, self).__init__(message)
+
+        self.table_name = table_name
 
 class _SQLAnyUnitypeMixin(object):
     """these types appear to return a buffer object."""
@@ -204,6 +223,7 @@ ischema_names = {
     'varbinary': VARBINARY,
     'image': IMAGE,
     'bit': BIT,
+    "long binary": LargeBinary,
 
 # not in documentation for ASE 15.7
     'long varchar': TEXT,  # TODO
@@ -211,6 +231,19 @@ ischema_names = {
     'uniqueidentifier': UNIQUEIDENTIFIER,
 
 }
+
+
+# converter function, only argument is the value returned
+# from the database that we want to convert
+_decimal_converter = lambda decAsString: decimal.Decimal(decAsString) if decAsString is not None else None   
+
+# list of types to have converted, and the callable that sqlanydb calls when
+# it needs to convert said type
+_converter_list = [(sqlanydb.DT_DECIMAL, _decimal_converter)]
+
+
+# register any converters we have with sqlanydb
+list(itertools.starmap(lambda x, y: sqlanydb.register_converter(x, y), _converter_list))
 
 
 class SQLAnyInspector(reflection.Inspector):
@@ -381,17 +414,27 @@ class SQLAnyDialect(default.DefaultDialect):
     postfetch_lastrowid = True
     supports_multivalues_insert = True
 
+    # if not present, then sqlalchemy expects a float when dealing with 'Numeric' decimal types
+    # but by default sqlanydb returns them as strings, which freaks sqlalchemy out
+    # so we return them as Decimal objects, by use of a converter function and 
+    # `sqlanydb.register_converter()`
+    supports_native_decimal = True 
+
+
+
     @classmethod
     def dbapi(self):
-        import sqlanydb
         return sqlanydb
 
     @property
     def driver(self):
-        import sqlanydb
         return sqlanydb
 
     def create_connect_args(self, url):
+
+        # get extra options
+        dialect_opts = dict(url.query)
+
         opts = url.translate_connect_args(username='uid', password='pwd',
                                           database='dbn' )
         keys = list(opts.keys())
@@ -399,6 +442,7 @@ class SQLAnyDialect(default.DefaultDialect):
             opts['host'] += ':%s' % opts['port']
             del opts['port']
         #
+        opts.update(dialect_opts)
         return ([], opts)
     #
 
@@ -665,6 +709,13 @@ class SQLAnyDialect(default.DefaultDialect):
         results = connection.execute(PK_SQL, table_id=table_id)
         pks = results.fetchone()
         results.close()
+
+        if not pks:
+            # if we don't have any primary keys, then we will get a 
+            # "TypeError: 'NoneType' object is not subscriptable" below.
+            raise SQLAnyNoPrimaryKeyError(
+                "The table %s has no primary key and therefore can't be mapped using SQLAlchemy!" % table_name,
+                table_name)
 
         PKCOL_SQL = text("""
              select tc.column_name as col
