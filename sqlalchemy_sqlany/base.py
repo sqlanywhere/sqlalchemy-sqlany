@@ -711,11 +711,8 @@ class SQLAnyDialect(default.DefaultDialect):
         results.close()
 
         if not pks:
-            # if we don't have any primary keys, then we will get a 
-            # "TypeError: 'NoneType' object is not subscriptable" below.
-            raise SQLAnyNoPrimaryKeyError(
-                "The table %s has no primary key and therefore can't be mapped using SQLAlchemy!" % table_name,
-                table_name)
+            return {"constrained_columns": [],
+                    "name": None}
 
         PKCOL_SQL = text("""
              select tc.column_name as col
