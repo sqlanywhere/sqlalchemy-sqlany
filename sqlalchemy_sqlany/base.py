@@ -837,3 +837,12 @@ class SQLAnyDialect(default.DefaultDialect):
             return False
         else:
             return True
+
+    def is_disconnect(self, e, connection, cursor):
+        """
+        Signal to SQLAlchemy whether *e* indicates that *connection* is
+        broken and the pool needs to be recycled.
+        """
+        if isinstance(e, sqlanydb.OperationalError):
+            return e.args[1] in (-101, -308,)
+        return False
