@@ -592,7 +592,7 @@ class SQLAnyDialect(default.DefaultDialect):
         column_cache[table_id] = columns
 
         REFCONSTRAINT_SQL = text("""
-          SELECT pt.table_name AS name, pt.table_id AS reftable_id
+          SELECT fk.foreign_index_id, pt.table_name AS name, pt.table_id AS reftable_id
           FROM sys.sysfkey fk
           join sys.systab pt on fk.primary_table_id = pt.table_id
           WHERE fk.foreign_table_id = :table_id
@@ -608,6 +608,7 @@ class SQLAnyDialect(default.DefaultDialect):
 
         for r in referential_constraints:
             reftable_id = r["reftable_id"]
+            foreign_index_id = r["foreign_index_id"]
 
             if reftable_id not in table_cache:
                 c = connection.execute(REFTABLE_SQL, table_id=reftable_id)
@@ -638,10 +639,12 @@ class SQLAnyDialect(default.DefaultDialect):
             join sys.sysidxcol pic on (fk.primary_index_id=pic.index_id and fk.primary_table_id=pic.table_id)
             WHERE fk.primary_table_id = :reftable_id
             and fk.foreign_table_id = :table_id
+            and fk.foreign_index_id = :foreign_index_id
             """)
             ref_cols = connection.execute(REFCOLS_SQL,
                                           table_id=table_id,
-                                          reftable_id=reftable_id)
+                                          reftable_id=reftable_id,
+                                          foreign_index_id=foreign_index_id)
             for rc in ref_cols:
                 constrained_columns.append(columns[rc["fokey"]])
                 referred_columns.append(reftable_columns[rc["refkey"]])
