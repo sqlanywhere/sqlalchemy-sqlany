@@ -81,14 +81,14 @@ RESERVED_WORDS = set([
     ])
 
 class SQLAnyNoPrimaryKeyError(Exception):
-    ''' exception that is raised when trying to load the primary keys for a 
+    """ exception that is raised when trying to load the primary keys for a 
     table that does not have any columns marked as being a primary key. 
     As noted in this documentation: 
     http://docs.sqlalchemy.org/en/latest/faq.html#how-do-i-map-a-table-that-has-no-primary-key
     if a table has fully duplicate rows, and has no primary key, it cannot be mapped.
     Since we can't tell if a table has rows that are 'supposed' to act like a primary key,
     we just throw an exception and hopes the user adds primary keys to the table instead.
-    '''
+    """
 
     def __init__(self, message, table_name):
 
@@ -310,8 +310,8 @@ class SQLAnySQLCompiler(compiler.SQLCompiler):
         'milliseconds': 'millisecond'
     })
 
-    def get_select_precolumns(self, select):
-        s = "DISTINCT" if select._distinct else ""
+    def get_select_precolumns(self, select, **kw ):
+        s = "DISTINCT " if select._distinct else ""
         if select._limit:
             if select._limit == 1:
                 s += "FIRST "
@@ -322,12 +322,16 @@ class SQLAnySQLCompiler(compiler.SQLCompiler):
                 # SQL Anywhere doesn't allow "start at" without "top n"
                 s += "TOP ALL "
             s += "START AT %s " % (select._offset + 1,)
-        return s
+        if s != '':
+            return s
+        return compiler.SQLCompiler.get_select_precolumns(
+            self, select, **kw)
+
 
     def get_from_hint_text(self, table, text):
         return text
 
-    def limit_clause(self, select):
+    def limit_clause(self, select, **kw):
         # Limit in sybase is after the select keyword
         return ""
 
@@ -466,6 +470,11 @@ class SQLAnyDialect(default.DefaultDialect):
         super(SQLAnyDialect, self).initialize(connection)
         self.max_identifier_length = 128
 
+        VERSION_SQL = text('select @@version')
+        result = connection.execute(VERSION_SQL)
+        vers = result.scalar()
+        self.server_version_info = tuple( vers.split(' ')[0].split( '.' ) )
+
     def get_table_id(self, connection, table_name, schema=None, **kw):
         """Fetch the id for schema.table_name.
 
@@ -592,10 +601,12 @@ class SQLAnyDialect(default.DefaultDialect):
         column_cache[table_id] = columns
 
         REFCONSTRAINT_SQL = text("""
-          SELECT fk.foreign_index_id, pt.table_name AS name, pt.table_id AS reftable_id
+          SELECT fk.foreign_index_id, i.index_name AS name, pt.table_id AS reftable_id
           FROM sys.sysfkey fk
           join sys.systab pt on fk.primary_table_id = pt.table_id
+          join sys.sysidx i on i.table_id=fk.primary_table_id
           WHERE fk.foreign_table_id = :table_id
+          and i.index_category=2
         """)
         referential_constraints = connection.execute(REFCONSTRAINT_SQL,
                                                      table_id=table_id)
@@ -714,11 +725,8 @@ class SQLAnyDialect(default.DefaultDialect):
         results.close()
 
         if not pks:
-            # if we don't have any primary keys, then we will get a 
-            # "TypeError: 'NoneType' object is not subscriptable" below.
-            raise SQLAnyNoPrimaryKeyError(
-                "The table %s has no primary key and therefore can't be mapped using SQLAlchemy!" % table_name,
-                table_name)
+            return {"constrained_columns": [],
+                    "name": None}
 
         PKCOL_SQL = text("""
              select tc.column_name as col
