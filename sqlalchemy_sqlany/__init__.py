@@ -1,7 +1,7 @@
 # Copyright 2015 SAP AG or an SAP affiliate company.
 # 
 
-__version__ = '1.0.3'
+__version__ = '1.0.4'
 
 from sqlalchemy_sqlany import base
 
