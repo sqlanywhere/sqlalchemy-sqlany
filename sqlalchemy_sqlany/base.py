@@ -8,7 +8,7 @@ import itertools
 
 import sqlanydb
 
-from sqlalchemy.sql import compiler, expression, text, bindparam
+from sqlalchemy.sql import compiler, expression, text, column, bindparam
 from sqlalchemy.engine import default, base, reflection, url
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql import operators as sql_operators
@@ -462,8 +462,7 @@ class SQLAnyDialect(default.DefaultDialect):
 
     def _get_default_schema_name(self, connection):
         return connection.scalar(
-                     text("SELECT current user",
-                     typemap={'user_name': Unicode})
+                     text("SELECT current user").columns(column('user_name', Unicode))
              )
 
     def initialize(self, connection):
